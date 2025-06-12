@@ -47,13 +47,5 @@ automatic_scaling:
   min_num_instances: 1
   max_num_instances: 5
 
-# Hapus atau kosongkan entrypoint di app.yaml karena sudah didefinisikan di Procfile
-# entrypoint: 'composer install --no-dev --optimize-autoloader && php artisan optimize:clear && php-fpm'
-# Jika Anda ingin mempertahankan composer install, Anda bisa memindahkan ini ke `hooks`
-# Atau biarkan kosong jika Buildpack sudah pintar untuk ini.
-# Untuk Buildpacks, `composer install` akan dijalankan secara otomatis.
-# Kita hanya perlu membersihkan cache.
-
-# Mari kita kosongkan entrypoint untuk saat ini karena Buildpack akan handle startup Nginx/PHP-FPM.
-# Composer install dan optimize:clear biasanya juga dijalankan otomatis oleh Buildpack.
-entrypoint: '' # Biarkan kosong atau hapus baris ini sepenuhnya
+# TAMBAHKAN KEMBALI ENTRYPOINT INI
+entrypoint: "/usr/bin/google-php-launcher"
