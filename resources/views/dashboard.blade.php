@@ -427,6 +427,56 @@
         0% { left: -100%; }
         100% { left: 100%; }
     }
+
+    .notification {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(229, 231, 235, 0.3);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        transform: translateX(0);
+        opacity: 1;
+        transition: all 0.3s ease-in-out;
+    }
+
+    .notification.success {
+        border-left: 4px solid #10B981;
+        background: linear-gradient(to right, rgba(16, 185, 129, 0.1), rgba(255, 255, 255, 0.95));
+    }
+
+    .notification.error {
+        border-left: 4px solid #EF4444;
+        background: linear-gradient(to right, rgba(239, 68, 68, 0.1), rgba(255, 255, 255, 0.95));
+    }
+
+    .notification.warning {
+        border-left: 4px solid #F59E0B;
+        background: linear-gradient(to right, rgba(245, 158, 11, 0.1), rgba(255, 255, 255, 0.95));
+    }
+
+    .notification.info {
+        border-left: 4px solid #3B82F6;
+        background: linear-gradient(to right, rgba(59, 130, 246, 0.1), rgba(255, 255, 255, 0.95));
+    }
+
+    .notification-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: currentColor;
+        opacity: 0.2;
+        transition: width 0.3s linear;
+    }
+
+    .notification.success .notification-progress { background: #10B981; }
+    .notification.error .notification-progress { background: #EF4444; }
+    .notification.warning .notification-progress { background: #F59E0B; }
+    .notification.info .notification-progress { background: #3B82F6; }
+
+    .notification:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15), 0 10px 15px -6px rgba(0, 0, 0, 0.1);
+    }
 </style>
 @endpush
 
@@ -1030,6 +1080,172 @@
 @endsection
 
 @push('scripts')
+<style>
+.notification {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(229, 231, 235, 0.3);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    transform: translateX(0);
+    opacity: 1;
+    transition: all 0.3s ease-in-out;
+}
+
+.notification.success {
+    border-left: 4px solid #10B981;
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.1), rgba(255, 255, 255, 0.95));
+}
+
+.notification.error {
+    border-left: 4px solid #EF4444;
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.1), rgba(255, 255, 255, 0.95));
+}
+
+.notification.warning {
+    border-left: 4px solid #F59E0B;
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.1), rgba(255, 255, 255, 0.95));
+}
+
+.notification.info {
+    border-left: 4px solid #3B82F6;
+    background: linear-gradient(to right, rgba(59, 130, 246, 0.1), rgba(255, 255, 255, 0.95));
+}
+
+.notification-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: currentColor;
+    opacity: 0.2;
+    transition: width 0.3s linear;
+}
+
+.notification.success .notification-progress { background: #10B981; }
+.notification.error .notification-progress { background: #EF4444; }
+.notification.warning .notification-progress { background: #F59E0B; }
+.notification.info .notification-progress { background: #3B82F6; }
+
+.notification:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15), 0 10px 15px -6px rgba(0, 0, 0, 0.1);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sistem Notifikasi yang Disempurnakan
+    const NotificationSystem = {
+        init() {
+            if (!document.getElementById('notificationContainer')) {
+                const container = document.createElement('div');
+                container.id = 'notificationContainer';
+                container.className = 'fixed top-4 right-4 z-50 w-96 space-y-2 pointer-events-none';
+                document.body.appendChild(container);
+            }
+
+            // Cek apakah ini adalah akses pertama setelah login
+            @if(session('show_welcome_popup'))
+                this.showWelcomeNotification();
+            @endif
+            
+            // Inisialisasi notifikasi proyek
+            this.showProjectNotifications();
+        },
+
+        showWelcomeNotification() {
+            const hour = new Date().getHours();
+            let greeting = 'Selamat datang';
+            
+            if (hour < 12) greeting = 'Selamat pagi';
+            else if (hour < 15) greeting = 'Selamat siang';
+            else if (hour < 18) greeting = 'Selamat sore';
+            else greeting = 'Selamat malam';
+
+            this.show(`${greeting}, {{ $currentUser->name ?? 'User' }}!`, 'info', 5000);
+        },
+
+        showProjectNotifications() {
+            const notificationData = @json($notificationData ?? []);
+            
+            // Proyek mendekati deadline
+            if (notificationData.urgent_projects > 0) {
+                setTimeout(() => {
+                    this.show(`⚠️ ${notificationData.urgent_projects} proyek mendekati deadline!`, 'warning', 5000);
+                }, 2000);
+            }
+            
+            // Proyek overdue
+            if (notificationData.overdue_projects > 0) {
+                setTimeout(() => {
+                    this.show(`🚨 ${notificationData.overdue_projects} proyek telah melewati deadline!`, 'error', 5000);
+                }, 4000);
+            }
+            
+            // Requirements belum selesai
+            if (notificationData.incomplete_requirements > 0) {
+                setTimeout(() => {
+                    this.show(`📋 ${notificationData.incomplete_requirements} requirements perlu diselesaikan.`, 'info', 5000);
+                }, 6000);
+            }
+            
+            // Proyek selesai
+            if (notificationData.completed_projects > 0) {
+                setTimeout(() => {
+                    this.show(`🎉 ${notificationData.completed_projects} proyek telah selesai!`, 'success', 5000);
+                }, 8000);
+            }
+        },
+
+        show(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('notificationContainer');
+            if (!container) return;
+
+            const notification = document.createElement('div');
+            notification.className = `notification ${type} flex items-center p-4 mb-3 rounded-lg relative overflow-hidden transform transition-all duration-300 ease-in-out`;
+            
+            const icons = {
+                'success': 'ri-checkbox-circle-fill text-emerald-500',
+                'error': 'ri-error-warning-fill text-red-500',
+                'warning': 'ri-alert-fill text-amber-500',
+                'info': 'ri-information-fill text-blue-500'
+            };
+            
+            notification.innerHTML = `
+                <i class="${icons[type] || icons['info']} text-xl mr-3"></i>
+                <div class="flex-1 font-medium text-sm leading-relaxed">${message}</div>
+                <div class="notification-progress" style="width: 100%"></div>
+            `;
+
+            container.insertBefore(notification, container.firstChild);
+
+            // Progress bar animation
+            const progressBar = notification.querySelector('.notification-progress');
+            setTimeout(() => {
+                progressBar.style.width = '0%';
+            }, 100);
+
+            // Auto remove with fade out
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, duration);
+        }
+    };
+
+    // Inisialisasi NotificationSystem
+    NotificationSystem.init();
+});
+</script>
+
+<!-- Load chart.js setelah sistem notifikasi -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
 // Global Functions - Define these first
@@ -1555,6 +1771,17 @@ document.addEventListener('DOMContentLoaded', function() {
             })) }};
         @endif
         
+        // Definisikan updateNotificationBadge sebagai function declaration agar bisa diakses sebelum inisialisasi
+        function updateNotificationBadge() {
+            const badge = document.getElementById('notificationBadge');
+            if (badge && window.notificationCount > 0) {
+                badge.textContent = window.notificationCount;
+                badge.style.display = 'flex';
+            } else if (badge) {
+                badge.style.display = 'none';
+            }
+        }
+
         window.notificationCount = realNotificationCount;
         updateNotificationBadge();
 
@@ -1563,59 +1790,39 @@ document.addEventListener('DOMContentLoaded', function() {
             updateNotificationBadge();
 
             const notification = document.createElement('div');
-            notification.className = `notification-item fixed top-20 right-6 max-w-sm bg-white border border-slate-200 rounded-lg shadow-lg p-4 z-50 transform translate-x-full transition-transform duration-300`;
+            notification.className = `notification ${type} flex items-center p-4 mb-3 rounded-lg relative overflow-hidden transform transition-all duration-300 ease-in-out`;
             
-            const colors = {
-                success: 'border-l-4 border-l-green-500',
-                error: 'border-l-4 border-l-red-500',
-                warning: 'border-l-4 border-l-yellow-500',
-                info: 'border-l-4 border-l-blue-500'
+            const icons = {
+                'success': 'ri-checkbox-circle-fill text-emerald-500',
+                'error': 'ri-error-warning-fill text-red-500',
+                'warning': 'ri-alert-fill text-amber-500',
+                'info': 'ri-information-fill text-blue-500'
             };
-
-            // Split the classes and add them individually
-            const colorClasses = (colors[type] || colors.info).split(' ');
-            colorClasses.forEach(className => {
-                if (className.trim()) {
-                    notification.classList.add(className.trim());
-                }
-            });
             
             notification.innerHTML = `
-                <div class="flex items-start space-x-3">
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-slate-900">${message}</p>
-                        <p class="text-xs text-slate-500 mt-1">${new Date().toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}</p>
-                    </div>
-                    <button onclick="this.closest('.notification-item').remove(); window.notificationCount = Math.max(0, window.notificationCount - 1); updateNotificationBadge();" class="text-slate-400 hover:text-slate-600">
-                        <i class="ri-close-line"></i>
-                    </button>
-                </div>
+                <i class="${icons[type] || icons['info']} text-xl mr-3"></i>
+                <div class="flex-1 font-medium">${message}</div>
+                <div class="notification-progress" style="width: 100%"></div>
             `;
 
-            document.body.appendChild(notification);
+            document.getElementById('notificationContainer').insertBefore(notification, document.getElementById('notificationContainer').firstChild);
 
+            // Progress bar animation
+            const progressBar = notification.querySelector('.notification-progress');
             setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
+                progressBar.style.width = '0%';
             }, 100);
 
+            // Auto remove with fade out
             setTimeout(() => {
+                notification.style.opacity = '0';
                 notification.style.transform = 'translateX(100%)';
                 setTimeout(() => {
+                    if (notification.parentElement) {
                     notification.remove();
-                    window.notificationCount = Math.max(0, window.notificationCount - 1);
-                    updateNotificationBadge();
+                    }
                 }, 300);
             }, duration);
-        };
-
-        const updateNotificationBadge = () => {
-            const badge = document.getElementById('notificationBadge');
-            if (badge && window.notificationCount > 0) {
-                badge.textContent = window.notificationCount;
-                badge.style.display = 'flex';
-            } else if (badge) {
-                badge.style.display = 'none';
-            }
         };
 
         // Request notification permission

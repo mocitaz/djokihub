@@ -334,19 +334,76 @@ class DashboardController extends Controller
                 session(['show_welcome_popup' => false]);
             }
 
+            // --- Notifikasi Data Real-time ---
+            $notificationData = [
+                'urgent_projects' => Project::whereIn('status', ['Active', 'On-going'])
+                    ->where('end_date', '<=', Carbon::now()->addDays(3))
+                    ->count(),
+                
+                'overdue_projects' => Project::whereIn('status', ['Active', 'On-going'])
+                    ->where('end_date', '<', Carbon::now())
+                    ->count(),
+                
+                'pending_requirements' => DB::table('project_requirements')
+                    ->join('projects', 'projects.id', '=', 'project_requirements.project_id')
+                    ->whereIn('projects.status', ['Active', 'On-going'])
+                    ->where('project_requirements.is_completed', false)
+                    ->count(),
+                
+                'completed_requirements' => DB::table('project_requirements')
+                    ->join('projects', 'projects.id', '=', 'project_requirements.project_id')
+                    ->whereIn('projects.status', ['Active', 'On-going'])
+                    ->where('project_requirements.is_completed', true)
+                    ->count(),
+                
+                'recent_completions' => Project::where('status', 'Completed')
+                    ->where('updated_at', '>=', Carbon::now()->subDays(7))
+                    ->count(),
+                
+                'new_projects' => Project::where('created_at', '>=', Carbon::now()->subDays(3))
+                    ->count(),
+                
+                'staff_workload' => User::where('role', 'staff')
+                    ->withCount(['projects' => function($query) {
+                        $query->whereIn('status', ['Active', 'On-going']);
+                    }])
+                    ->having('projects_count', '>=', 3)
+                    ->count(),
+                
+                'payment_pending' => Project::whereIn('status', ['Completed', 'Active', 'On-going'])
+                    ->where(function($query) {
+                        $query->where('payment_status', 'Pending')
+                            ->orWhere('payment_status', 'Partially Paid')
+                            ->orWhereNull('payment_status');
+                    })
+                    ->count(),
+                
+                'high_priority_updates' => Project::whereIn('status', ['Active', 'On-going'])
+                    ->where('updated_at', '<', Carbon::now()->subDays(7))
+                    ->count(),
+                
+                'client_interactions' => Project::distinct('client_name')
+                    ->whereIn('status', ['Active', 'On-going'])
+                    ->whereNotNull('client_name')
+                    ->count()
+            ];
+
             return view('dashboard', compact(
                 'todoProjectsCount', 'inProgressProjectsCount', 'completedProjectsCount',
                 'staffChartData', 'paymentChartData',
                 'recentActivities', 'upcomingDeadlines',
-                'totalAllCompletedBudget', 'activeClients', 'monthlyGrowth', 'pendingTasks'
+                'totalAllCompletedBudget', 'activeClients', 'monthlyGrowth', 'pendingTasks',
+                'notificationData'
             ));
 
         } catch (\Exception $e) {
             Log::error('DashboardController@index - Critical Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(), 'user_id' => Auth::id() ?? 'Guest'
+                'trace' => $e->getTraceAsString(),
+                'user_id' => Auth::id() ?? 'Guest'
             ]);
-            if (config('app.debug')) throw $e; 
-            return response()->view('errors.500', ['message' => 'Terjadi kesalahan internal pada server saat memuat data dashboard.'], 500);
+            return response()->view('errors.500', [
+                'message' => 'Terjadi kesalahan internal pada server saat memuat data dashboard.'
+            ], 500);
         }
     }
     

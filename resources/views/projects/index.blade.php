@@ -1576,10 +1576,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (project.requirements && project.requirements.length > 0) {
                     requirementsContainer.innerHTML = '';
                     project.requirements.forEach((requirement, index) => {
-                        // FIX: requirement is an object, extract description
                         const description = typeof requirement === 'object' ? requirement.description : requirement;
-                        console.log(`Adding requirement ${index}:`, description);
-                        addRequirementFieldWithValue(description || '');
+                        const isCompleted = typeof requirement === 'object' ? requirement.is_completed : false;
+                        console.log(`Adding requirement ${index}:`, description, 'Completed:', isCompleted);
+                        addRequirementFieldWithValue(description || '', isCompleted);
                     });
                 } else {
                     // If no requirements, add one empty field
@@ -1624,7 +1624,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Add requirement field with value (for edit mode)
-        function addRequirementFieldWithValue(value = '') {
+        function addRequirementFieldWithValue(value = '', isCompleted = false) {
             const container = document.getElementById('project-requirements-container');
             if (!container) return;
 
@@ -1632,13 +1632,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const div = document.createElement('div');
             div.className = 'flex items-center space-x-2 requirement-item';
             div.innerHTML = `
+                <div class="flex-1 flex items-center space-x-2">
                 <input type="text" name="requirements[${index}][description]" value="${value}" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-primary-500" placeholder="Enter requirement..." required>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="requirements[${index}][is_completed_temp]" ${isCompleted ? 'checked' : ''} class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer requirement-checkbox">
+                        <span class="ml-2 text-sm text-gray-500 requirement-status">${isCompleted ? 'Completed' : ''}</span>
+                    </div>
+                </div>
                 <button type="button" class="text-red-500 hover:text-red-700 p-1 rounded remove-requirement-btn" title="Remove requirement">
                     <i class="ri-close-circle-line text-lg"></i>
                 </button>
             `;
             
             container.appendChild(div);
+
+            // Add checkbox change event listener
+            const checkbox = div.querySelector('.requirement-checkbox');
+            const statusSpan = div.querySelector('.requirement-status');
+            checkbox.addEventListener('change', function() {
+                statusSpan.textContent = this.checked ? 'Completed' : '';
+            });
 
             // Add remove functionality
             div.querySelector('.remove-requirement-btn').addEventListener('click', () => {
@@ -1652,6 +1665,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        function addRequirementField() {
+            addRequirementFieldWithValue('', false);
+        }
+
         // Re-index requirements after removal
         function reindexRequirements() {
             const container = document.getElementById('project-requirements-container');
@@ -1659,8 +1676,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             Array.from(container.children).forEach((item, index) => {
                 const input = item.querySelector('input[name*="requirements"]');
+                const checkbox = item.querySelector('input[type="checkbox"]');
                 if (input) {
                     input.name = `requirements[${index}][description]`;
+                }
+                if (checkbox) {
+                    checkbox.name = `requirements[${index}][is_completed_temp]`;
                 }
             });
         }
@@ -1706,18 +1727,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     // FIX: Handle requirements as objects
                     const description = typeof req === 'object' ? req.description : req;
                     const isCompleted = typeof req === 'object' ? req.is_completed : false;
-                    const iconClass = isCompleted ? 'ri-checkbox-circle-fill text-green-500' : 'ri-checkbox-circle-line text-primary';
-                    
-                    console.log(`Requirement ${index}:`, {
-                        description,
-                        isCompleted,
-                        originalReq: req
-                    });
+                    const iconClass = isCompleted ? 'ri-checkbox-circle-fill text-green-500' : 'ri-checkbox-circle-line text-gray-400';
+                    const textClass = isCompleted ? 'line-through text-gray-500' : '';
                     
                     return `<li class="flex items-center space-x-2">
-                        <i class="${iconClass}"></i>
-                        <span class="${isCompleted ? 'line-through text-gray-500' : ''}">${description}</span>
-                        ${isCompleted ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full ml-auto">Completed</span>' : ''}
+                        <i class="${iconClass} mr-2"></i>
+                        <span class="${textClass}">${description}</span>
+                        ${isCompleted ? '<span class="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Completed</span>' : ''}
                     </li>`;
                 }).join('');
             } else {
@@ -1765,34 +1781,6 @@ document.addEventListener('DOMContentLoaded', function() {
             ['remove_file_poc_container', 'remove_file_bast_container'].forEach(id => {
                 const element = document.getElementById(id);
                 if (element) element.style.display = 'none';
-            });
-        }
-
-        function addRequirementField() {
-            const container = document.getElementById('project-requirements-container');
-            if (!container) return;
-
-            const index = container.children.length;
-            const div = document.createElement('div');
-            div.className = 'flex items-center space-x-2 requirement-item';
-            div.innerHTML = `
-                <input type="text" name="requirements[${index}][description]" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-primary-500" placeholder="Enter requirement..." required>
-                <button type="button" class="text-red-500 hover:text-red-700 p-1 rounded remove-requirement-btn" title="Remove requirement">
-                    <i class="ri-close-circle-line text-lg"></i>
-                </button>
-            `;
-            
-            container.appendChild(div);
-
-            // Add remove functionality
-            div.querySelector('.remove-requirement-btn').addEventListener('click', () => {
-                div.remove();
-                // Re-index remaining requirements
-                reindexRequirements();
-                // Ensure at least one requirement field
-                if (container.children.length === 0) {
-                    addRequirementField();
-                }
             });
         }
 

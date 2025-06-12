@@ -837,8 +837,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 modalContentArea.style.opacity = '1';
             }, 10);
             
+            console.info('[Modal] Membuka modal manajemen SOP & Regulasi');
             loadSopCategoriesForSelect();
-            loadRegulationsForManagement();
+            console.info('[SOP] Memuat ulang daftar SOP untuk modal...');
+            renderSopSections();
+            console.info('[Regulation] Memuat ulang daftar regulasi untuk modal...');
+            renderRegulations();
             
             // Reset to first tab
             if (modalTabButtons.length > 0) {
@@ -1120,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast(result.message || 'SOP Category created successfully!', 'success');
                 showModalNotification(result.message || 'SOP Category created successfully!', 'success');
                 this.reset();
-                loadSopCategoriesForSelect();
+                await renderSopSections();
             } catch (error) {
                 console.error('Error adding SOP category:', error);
                 showToast(error.message || 'Failed to create SOP category.', 'error');
@@ -1132,8 +1136,72 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Continue with other existing functionality...
-    // (The rest of the SOP and Regulation management functions remain the same but with enhanced toast notifications)
+    // --- RENDER DINAMIS DAFTAR SOP & REGULATION ---
+    async function renderSopSections() {
+        const sopContent = document.getElementById('sop-content');
+        if (!sopContent) return;
+        try {
+            console.log('[SOP] Fetching SOP sections with items...');
+            const response = await fetch(API_URLS.sopSections + '?with_items=1', { headers: { 'Accept': 'application/json' } });
+            const sopSections = await response.json();
+            console.log('[SOP] Data diterima:', sopSections);
+            let html = '';
+            if (sopSections.length === 0) {
+                html = `<div class="text-center py-16"><div class="max-w-md mx-auto"><i class="ri-file-list-3-line text-8xl text-slate-300 mb-6"></i><h3 class="text-2xl font-bold text-slate-600 mb-4">No SOPs Created Yet</h3><p class="text-slate-500 mb-8 leading-relaxed">Standard Operating Procedures help maintain consistency and quality in your operations. Get started by creating your first SOP category.</p></div></div>`;
+            } else {
+                sopSections.forEach(section => {
+                    html += `<section id="sop-section-${section.id}" class="space-y-6 sop-section-item p-6 bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                        <h2 class="text-xl font-bold text-slate-800 sop-section-title border-b border-slate-300 pb-3 mb-4 flex items-center">
+                            <i class="ri-folder-3-line mr-3 text-blue-600"></i>${section.title}
+                        </h2>`;
+                    if (section.introduction) {
+                        html += `<div class="bg-white rounded-lg p-5 prose prose-sm max-w-none text-slate-700 leading-relaxed border border-slate-200 shadow-sm">${section.introduction}</div>`;
+                    }
+                    if (section.items && section.items.length > 0) {
+                        html += '<div class="space-y-4">';
+                        section.items.forEach(sop => {
+                            html += `<div class="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-lg transition-all duration-300 sop-item transform hover:-translate-y-1"><div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center"><i class="ri-file-text-line text-blue-600"></i></div><div class="flex-1"><h3 class="text-lg font-semibold text-slate-900 mb-2">${sop.title}</h3><div class="prose prose-sm max-w-none text-slate-600 leading-relaxed">${sop.description}</div></div></div></div>`;
+                        });
+                        html += '</div>';
+                    } else {
+                        html += `<div class="bg-white border border-slate-200 rounded-xl p-8 text-center"><i class="ri-file-add-line text-4xl text-slate-300 mb-4"></i><p class="text-base text-slate-500 font-medium">No procedures defined yet</p><p class="text-sm text-slate-400 mt-1">Specific procedures for this category will appear here once added.</p></div>`;
+                    }
+                    html += '</section>';
+                });
+            }
+            sopContent.innerHTML = html;
+            console.info('[SOP] Render selesai.');
+        } catch (error) {
+            sopContent.innerHTML = '<div class="text-center py-8 text-red-500">Gagal memuat SOP.</div>';
+            console.error('[SOP] Error saat render:', error);
+        }
+    }
+
+    async function renderRegulations() {
+        const regContent = document.getElementById('regulations-content');
+        if (!regContent) return;
+        try {
+            console.log('[Regulation] Fetching regulations...');
+            const response = await fetch(API_URLS.regulations, { headers: { 'Accept': 'application/json' } });
+            const regulations = await response.json();
+            console.log('[Regulation] Data diterima:', regulations);
+            let html = '';
+            if (regulations.length === 0) {
+                html = `<div class="text-center py-16"><div class="max-w-md mx-auto"><i class="ri-scales-3-line text-8xl text-slate-300 mb-6"></i><h3 class="text-2xl font-bold text-slate-600 mb-4">No Regulations Defined</h3><p class="text-slate-500 mb-8 leading-relaxed">Company regulations establish clear expectations and maintain compliance. Start by adding your first company policy or regulation.</p></div></div>`;
+            } else {
+                html += `<section class="space-y-6 regulation-section-item p-6 bg-gradient-to-br from-slate-50 to-purple-50 rounded-xl border border-slate-200 shadow-sm"><h2 class="text-xl font-bold text-slate-800 regulation-section-title border-b border-slate-300 pb-3 mb-4 flex items-center"><i class="ri-scales-3-line mr-3 text-purple-600"></i>Company Regulations & Policies</h2><div class="space-y-4">`;
+                regulations.forEach(reg => {
+                    html += `<div class="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-lg transition-all duration-300 regulation-item transform hover:-translate-y-1"><div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center"><i class="ri-shield-check-line text-purple-600"></i></div><div class="flex-1"><h3 class="text-lg font-semibold text-slate-900 mb-2">${reg.title}</h3><div class="prose prose-sm max-w-none text-slate-600 leading-relaxed">${reg.description}</div></div></div></div>`;
+                });
+                html += '</div></section>';
+            }
+            regContent.innerHTML = html;
+            console.info('[Regulation] Render selesai.');
+        } catch (error) {
+            regContent.innerHTML = '<div class="text-center py-8 text-red-500">Gagal memuat regulasi.</div>';
+            console.error('[Regulation] Error saat render:', error);
+        }
+    }
 
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
@@ -1152,7 +1220,541 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // --- Loader Regulations Modal ---
+    async function loadRegulationsForManagement() {
+        const container = document.getElementById('regulations-list-container');
+        if (!container) return;
+        container.innerHTML = '<p class="text-sm text-slate-500 p-3 text-center">Loading regulations...</p>';
+        try {
+            const response = await fetch(API_URLS.regulations, { headers: { 'Accept': 'application/json' } });
+            let regulations = await response.json();
+            if (!Array.isArray(regulations)) {
+                console.error('[Regulation] Response bukan array:', regulations);
+                container.innerHTML = '<p class="text-sm text-red-500 p-3 text-center">Failed to load regulations (invalid response).</p>';
+                return;
+            }
+            console.log('[Regulation] Data untuk manajemen:', regulations);
+            if (regulations.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-500 p-3 text-center">No regulations found.</p>';
+                return;
+            }
+            container.innerHTML = regulations.map(reg => `
+                <div class="flex justify-between items-center border-b py-2">
+                    <div>
+                        <div class="font-semibold">${reg.title}</div>
+                        <div class="text-xs text-slate-500">${reg.description}</div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="edit-reg-btn px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded" data-id="${reg.id}">Edit</button>
+                        <button class="delete-reg-btn px-2 py-1 text-xs bg-red-100 text-red-700 rounded" data-id="${reg.id}">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+            // Event handler edit/delete
+            container.querySelectorAll('.edit-reg-btn').forEach(btn => {
+                btn.addEventListener('click', async e => {
+                    const id = btn.getAttribute('data-id');
+                    try {
+                        console.info('[Regulation] Fetch detail untuk edit:', id);
+                        const resp = await fetch(API_URLS.regulationDetail.replace(':id', id), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+                        if (resp.status === 403) {
+                            showToast('Akses ditolak. Anda tidak punya izin edit regulation.', 'error');
+                            console.error('[Regulation] Unauthorized (403) saat fetch detail:', id);
+                            return;
+                        }
+                        if (resp.status === 404) {
+                            showToast('Regulation tidak ditemukan.', 'error');
+                            console.error('[Regulation] Not found (404) saat fetch detail:', id);
+                            return;
+                        }
+                        if (resp.status === 422) {
+                            showToast('Data regulation tidak valid.', 'error');
+                            console.error('[Regulation] Unprocessable (422) saat fetch detail:', id);
+                            return;
+                        }
+                        if (!resp.ok) {
+                            showToast('Gagal mengambil data regulation.', 'error');
+                            console.error('[Regulation] Error lain saat fetch detail:', id, resp.status);
+                            return;
+                        }
+                        const reg = await resp.json();
+                        showEditRegulationForm(id, reg.title, reg.description || '');
+                    } catch (err) {
+                        showToast(err.message || 'Gagal memuat data regulation.', 'error');
+                        console.error('[Regulation] Error fetch detail:', err);
+                    }
+                });
+            });
+            container.querySelectorAll('.delete-reg-btn').forEach(btn => {
+                btn.addEventListener('click', async e => {
+                    const id = btn.getAttribute('data-id');
+                    if (!confirm('Yakin ingin menghapus regulation ini?')) return;
+                    try {
+                        const delResp = await fetch(API_URLS.regulationDetail.replace(':id', id), {
+                            method: 'DELETE',
+                            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                        });
+                        const delResult = await delResp.json();
+                        if (!delResp.ok) throw new Error(delResult.message || 'Gagal menghapus regulation.');
+                        showToast(delResult.message || 'Regulation deleted!', 'success');
+                        loadRegulationsForManagement();
+                        renderRegulations();
+                    } catch (err) {
+                        showToast(err.message || 'Gagal menghapus regulation.', 'error');
+                        console.error('[Regulation] Delete error:', err);
+                    }
+                });
+            });
+        } catch (error) {
+            container.innerHTML = '<p class="text-sm text-red-500 p-3 text-center">Failed to load regulations.</p>';
+            console.error('[Regulation] Error load for management:', error);
+        }
+    }
+
+    // --- Loader SOP Items Modal ---
+    async function loadSopItemsForManagement(categoryId) {
+        const container = document.getElementById('sop-items-list-container');
+        if (!container || !categoryId) return;
+        container.innerHTML = '<p class="text-sm text-slate-500 p-3 text-center">Loading SOP items...</p>';
+        try {
+            const response = await fetch(API_URLS.sopItems + '?sop_section_id=' + categoryId, { headers: { 'Accept': 'application/json' } });
+            let items = await response.json();
+            if (!Array.isArray(items)) {
+                console.error('[SOP] Response bukan array:', items);
+                container.innerHTML = '<p class="text-sm text-red-500 p-3 text-center">Failed to load SOP items (invalid response).</p>';
+                return;
+            }
+            console.log('[SOP] Items untuk manajemen:', items);
+            if (items.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-500 p-3 text-center">No SOP items found.</p>';
+                return;
+            }
+            container.innerHTML = items.map(item => `
+                <div class="flex justify-between items-center border-b py-2">
+                    <div>
+                        <div class="font-semibold">${item.title}</div>
+                        <div class="text-xs text-slate-500">${item.description}</div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="edit-sop-btn px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded" data-id="${item.id}">Edit</button>
+                        <button class="delete-sop-btn px-2 py-1 text-xs bg-red-100 text-red-700 rounded" data-id="${item.id}">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+            // Event handler edit/delete
+            container.querySelectorAll('.edit-sop-btn').forEach(btn => {
+                btn.addEventListener('click', async e => {
+                    const id = btn.getAttribute('data-id');
+                    try {
+                        console.info('[SOP] Fetch detail item untuk edit:', id);
+                        const resp = await fetch(API_URLS.sopItemDetail.replace(':id', id), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+                        if (resp.status === 403) {
+                            showToast('Akses ditolak. Anda tidak punya izin edit SOP item.', 'error');
+                            console.error('[SOP] Unauthorized (403) saat fetch detail item:', id);
+                            return;
+                        }
+                        if (resp.status === 404) {
+                            showToast('SOP item tidak ditemukan.', 'error');
+                            console.error('[SOP] Not found (404) saat fetch detail item:', id);
+                            return;
+                        }
+                        if (resp.status === 422) {
+                            showToast('Data SOP item tidak valid.', 'error');
+                            console.error('[SOP] Unprocessable (422) saat fetch detail item:', id);
+                            return;
+                        }
+                        if (!resp.ok) {
+                            showToast('Gagal mengambil data SOP item.', 'error');
+                            console.error('[SOP] Error lain saat fetch detail item:', id, resp.status);
+                            return;
+                        }
+                        const item = await resp.json();
+                        showEditSopItemForm(id, item.title, item.description || '', categoryId);
+                    } catch (err) {
+                        showToast(err.message || 'Gagal memuat data SOP item.', 'error');
+                        console.error('[SOP] Error fetch detail item:', err);
+                    }
+                });
+            });
+            container.querySelectorAll('.delete-sop-btn').forEach(btn => {
+                btn.addEventListener('click', async e => {
+                    const id = btn.getAttribute('data-id');
+                    if (!confirm('Yakin ingin menghapus SOP item ini?')) return;
+                    try {
+                        const delResp = await fetch(API_URLS.sopItemDetail.replace(':id', id), {
+                            method: 'DELETE',
+                            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                        });
+                        const delResult = await delResp.json();
+                        if (!delResp.ok) throw new Error(delResult.message || 'Gagal menghapus SOP item.');
+                        showToast(delResult.message || 'SOP item deleted!', 'success');
+                        loadSopItemsForManagement(categoryId);
+                        renderSopSections();
+                    } catch (err) {
+                        showToast(err.message || 'Gagal menghapus SOP item.', 'error');
+                        console.error('[SOP] Delete error:', err);
+                    }
+                });
+            });
+        } catch (error) {
+            container.innerHTML = '<p class="text-sm text-red-500 p-3 text-center">Failed to load SOP items.</p>';
+            console.error('[SOP] Error load for management:', error);
+        }
+    }
+
+    // --- Add Regulation AJAX ---
+    if (addRegulationForm) {
+        addRegulationForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            clearFormErrors(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-2"></i>Adding...';
+            submitBtn.disabled = true;
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            try {
+                const response = await fetch(API_URLS.regulations, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    if (response.status === 422 && result.errors) displayFormErrors(this, result.errors);
+                    else throw new Error(result.message || `HTTP error! Status: ${response.status}`);
+                    return;
+                }
+                showToast(result.message || 'Regulation created successfully!', 'success');
+                showModalNotification(result.message || 'Regulation created successfully!', 'success');
+                this.reset();
+                loadRegulationsForManagement();
+                renderRegulations();
+            } catch (error) {
+                showToast(error.message || 'Failed to create regulation.', 'error');
+                showModalNotification(error.message || 'Failed to create regulation.', 'error');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // --- Add SOP Item AJAX ---
+    if (addSopItemForm) {
+        addSopItemForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            clearFormErrors(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-2"></i>Adding...';
+            submitBtn.disabled = true;
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            try {
+                console.info('[SOP] Add SOP item:', data);
+                const response = await fetch(API_URLS.sopItems, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    if (response.status === 422 && result.errors) displayFormErrors(this, result.errors);
+                    else throw new Error(result.message || `HTTP error! Status: ${response.status}`);
+                    return;
+                }
+                showToast(result.message || 'SOP item created successfully!', 'success');
+                showModalNotification(result.message || 'SOP item created successfully!', 'success');
+                this.reset();
+                if (data.sop_section_id) {
+                    console.info('[SOP] Reload list setelah add:', data.sop_section_id);
+                    await loadSopItemsForManagement(data.sop_section_id);
+                }
+                renderSopSections();
+            } catch (error) {
+                showToast(error.message || 'Failed to create SOP item.', 'error');
+                showModalNotification(error.message || 'Failed to create SOP item.', 'error');
+                console.error('[SOP] Error add:', error);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // --- Edit Regulation (inline form) ---
+    function showEditRegulationForm(id, currentTitle, currentDesc) {
+        const container = document.getElementById('regulations-list-container');
+        const formHtml = `
+            <form id="edit-reg-form" class="p-3 bg-slate-50 rounded-xl mb-3 animate-fadeIn">
+                <input type="hidden" name="id" value="${id}">
+                <input type="text" name="title" value="${currentTitle}" class="w-full mb-2 px-2 py-1 border rounded" required>
+                <textarea name="description" class="w-full mb-2 px-2 py-1 border rounded" required>${currentDesc}</textarea>
+                <div class="flex space-x-2">
+                    <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded">Update</button>
+                    <button type="button" id="cancel-edit-reg" class="bg-slate-300 px-3 py-1 rounded">Cancel</button>
+                </div>
+                <div id="edit-reg-error" class="text-red-600 text-sm mt-2"></div>
+            </form>
+        `;
+        container.innerHTML = formHtml + container.innerHTML;
+        document.getElementById('cancel-edit-reg').onclick = () => loadRegulationsForManagement();
+        document.getElementById('edit-reg-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const data = {
+                title: this.title.value,
+                description: this.description.value
+            };
+            try {
+                const resp = await fetch(API_URLS.regulationDetail.replace(':id', id), {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await resp.json();
+                if (!resp.ok) {
+                    if (resp.status === 422 && result.errors) {
+                        const errorDiv = document.getElementById('edit-reg-error');
+                        errorDiv.textContent = Object.values(result.errors).flat().join(', ');
+                    } else if (resp.status === 403) {
+                        showToast('Akses ditolak. Anda tidak punya izin edit regulation.', 'error');
+                    } else {
+                        showToast(result.message || 'Gagal update regulation.', 'error');
+                    }
+                    return;
+                }
+                showToast(result.message || 'Regulation updated!', 'success');
+                loadRegulationsForManagement();
+                renderRegulations();
+            } catch (err) {
+                showToast(err.message || 'Gagal update regulation.', 'error');
+                console.error('[Regulation] Error update:', err);
+            }
+        };
+    }
+
+    // --- Edit SOP Item (inline form) ---
+    function showEditSopItemForm(id, currentTitle, currentDesc, categoryId) {
+        const container = document.getElementById('sop-items-list-container');
+        const formHtml = `
+            <form id="edit-sopitem-form" class="p-3 bg-slate-50 rounded-xl mb-3 animate-fadeIn">
+                <input type="hidden" name="id" value="${id}">
+                <input type="hidden" name="sop_section_id" value="${categoryId}">
+                <input type="text" name="title" value="${currentTitle}" class="w-full mb-2 px-2 py-1 border rounded" required>
+                <textarea name="description" class="w-full mb-2 px-2 py-1 border rounded" required>${currentDesc}</textarea>
+                <div class="flex space-x-2">
+                    <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded">Update</button>
+                    <button type="button" id="cancel-edit-sopitem" class="bg-slate-300 px-3 py-1 rounded">Cancel</button>
+                </div>
+                <div id="edit-sopitem-error" class="text-red-600 text-sm mt-2"></div>
+            </form>
+        `;
+        container.innerHTML = formHtml + container.innerHTML;
+        document.getElementById('cancel-edit-sopitem').onclick = () => loadSopItemsForManagement(categoryId);
+        document.getElementById('edit-sopitem-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const data = {
+                title: this.title.value,
+                description: this.description.value,
+                sop_section_id: this.sop_section_id.value
+            };
+            try {
+                const resp = await fetch(API_URLS.sopItemDetail.replace(':id', id), {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await resp.json();
+                if (!resp.ok) {
+                    if (resp.status === 422 && result.errors) {
+                        const errorDiv = document.getElementById('edit-sopitem-error');
+                        errorDiv.textContent = Object.values(result.errors).flat().join(', ');
+                    } else if (resp.status === 403) {
+                        showToast('Akses ditolak. Anda tidak punya izin edit SOP item.', 'error');
+                    } else {
+                        showToast(result.message || 'Gagal update SOP item.', 'error');
+                    }
+                    return;
+                }
+                showToast(result.message || 'SOP item updated!', 'success');
+                loadSopItemsForManagement(categoryId);
+                renderSopSections();
+            } catch (err) {
+                showToast(err.message || 'Gagal update SOP item.', 'error');
+                console.error('[SOP] Error update item:', err);
+            }
+        };
+    }
+
     console.log('Work Rules page enhanced JavaScript loaded successfully');
+
+    // --- Panggil loader saat tab modal diubah ---
+    modalTabButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (this.dataset.modalTabTarget === 'modal-regulation-management') {
+                console.info('[Tab] Manage Regulations dibuka');
+                loadRegulationsForManagement();
+            }
+            if (this.dataset.modalTabTarget === 'modal-sop-management') {
+                console.info('[Tab] Manage SOPs dibuka');
+                const selectedCat = selectSopCategoryToManage.value;
+                if (selectedCat) {
+                    document.getElementById('add-sop-item-section-id').value = selectedCat;
+                    sopItemsListContainer.classList.remove('hidden');
+                    console.info('[SOP] Loader dipanggil untuk kategori:', selectedCat);
+                    loadSopItemsForManagement(selectedCat);
+                } else {
+                    sopItemsListContainer.classList.add('hidden');
+                    console.warn('[SOP] Tidak ada kategori SOP terpilih saat tab dibuka');
+                }
+            }
+        });
+    });
+
+    // --- Panggil loader saat kategori SOP dipilih ---
+    if (selectSopCategoryToManage) {
+        selectSopCategoryToManage.addEventListener('change', function() {
+            const catId = this.value;
+            document.getElementById('add-sop-item-section-id').value = catId;
+            if (catId) {
+                sopItemsListContainer.classList.remove('hidden');
+                console.info('[SOP] Kategori SOP dipilih:', catId);
+                loadSopItemsForManagement(catId);
+            } else {
+                sopItemsListContainer.classList.add('hidden');
+                console.warn('[SOP] Tidak ada kategori SOP terpilih');
+            }
+        });
+    }
+
+    // --- Edit SOP Category (inline form di bawah dropdown) ---
+    if (selectSopCategoryToManage) {
+        selectSopCategoryToManage.addEventListener('change', async function() {
+            const catId = this.value;
+            if (catId) {
+                try {
+                    console.info('[SOP] Fetch detail kategori:', catId);
+                    const resp = await fetch(API_URLS.sopSectionDetail.replace(':id', catId), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+                    if (resp.status === 403) {
+                        showToast('Akses ditolak. Anda tidak punya izin edit kategori.', 'error');
+                        console.error('[SOP] Unauthorized (403) saat fetch kategori:', catId);
+                        editSopCategoryFormContainer.classList.add('hidden');
+                        return;
+                    }
+                    if (resp.status === 404) {
+                        showToast('Kategori SOP tidak ditemukan.', 'error');
+                        console.error('[SOP] Not found (404) saat fetch kategori:', catId);
+                        editSopCategoryFormContainer.classList.add('hidden');
+                        return;
+                    }
+                    if (resp.status === 422) {
+                        showToast('Data kategori tidak valid.', 'error');
+                        console.error('[SOP] Unprocessable (422) saat fetch kategori:', catId);
+                        editSopCategoryFormContainer.classList.add('hidden');
+                        return;
+                    }
+                    if (!resp.ok) {
+                        showToast('Gagal mengambil data kategori SOP.', 'error');
+                        console.error('[SOP] Error lain saat fetch kategori:', catId, resp.status);
+                        editSopCategoryFormContainer.classList.add('hidden');
+                        return;
+                    }
+                    const cat = await resp.json();
+                    editSopCategoryFormContainer.classList.remove('hidden');
+                    editSopCategoryForm.title.value = cat.title;
+                    editSopCategoryForm.introduction.value = cat.introduction || '';
+                    editSopCategoryForm.id.value = cat.id;
+                } catch (err) {
+                    editSopCategoryFormContainer.classList.add('hidden');
+                    showToast(err.message || 'Gagal memuat detail kategori SOP.', 'error');
+                    console.error('[SOP] Error fetch kategori:', err);
+                }
+            } else {
+                editSopCategoryFormContainer.classList.add('hidden');
+            }
+        });
+    }
+    // --- Edit SOP Category submit ---
+    if (editSopCategoryForm) {
+        editSopCategoryForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            clearFormErrors(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-2"></i>Updating...';
+            submitBtn.disabled = true;
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            try {
+                const resp = await fetch(API_URLS.sopSectionDetail.replace(':id', data.id), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({ title: data.title, introduction: data.introduction })
+                });
+                const result = await resp.json();
+                if (!resp.ok) {
+                    if (resp.status === 422 && result.errors) displayFormErrors(this, result.errors);
+                    else if (resp.status === 403) showToast('Akses ditolak. Anda tidak punya izin edit kategori.', 'error');
+                    else showToast(result.message || 'Gagal update kategori SOP.', 'error');
+                    return;
+                }
+                showToast(result.message || 'Kategori SOP berhasil diupdate!', 'success');
+                showModalNotification(result.message || 'Kategori SOP berhasil diupdate!', 'success');
+                await loadSopCategoriesForSelect();
+                renderSopSections();
+            } catch (error) {
+                showToast(error.message || 'Gagal update kategori SOP.', 'error');
+                showModalNotification(error.message || 'Gagal update kategori SOP.', 'error');
+                console.error('[SOP] Error update kategori:', error);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+    // --- Delete SOP Category ---
+    if (deleteSopCategoryButton) {
+        deleteSopCategoryButton.addEventListener('click', async function() {
+            const catId = editSopCategoryForm.id.value;
+            if (!catId) return;
+            if (!confirm('Yakin ingin menghapus kategori SOP ini?')) return;
+            deleteSopCategoryButton.disabled = true;
+            deleteSopCategoryButton.innerHTML = '<i class="ri-loader-4-line animate-spin mr-2"></i>Deleting...';
+            try {
+                const resp = await fetch(API_URLS.sopSectionDetail.replace(':id', catId), {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                });
+                const result = await resp.json();
+                if (!resp.ok) {
+                    if (resp.status === 403) showToast('Akses ditolak. Anda tidak punya izin hapus kategori.', 'error');
+                    else showToast(result.message || 'Gagal hapus kategori SOP.', 'error');
+                    return;
+                }
+                showToast(result.message || 'Kategori SOP berhasil dihapus!', 'success');
+                showModalNotification(result.message || 'Kategori SOP berhasil dihapus!', 'success');
+                await loadSopCategoriesForSelect();
+                renderSopSections();
+                editSopCategoryFormContainer.classList.add('hidden');
+            } catch (error) {
+                showToast(error.message || 'Gagal hapus kategori SOP.', 'error');
+                showModalNotification(error.message || 'Gagal hapus kategori SOP.', 'error');
+                console.error('[SOP] Error hapus kategori:', error);
+            } finally {
+                deleteSopCategoryButton.disabled = false;
+                deleteSopCategoryButton.innerHTML = '<i class="ri-delete-bin-line mr-1"></i>Delete Category';
+            }
+        });
+    }
 });
 </script>
 @endpush

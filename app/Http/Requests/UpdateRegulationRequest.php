@@ -11,7 +11,7 @@ class UpdateRegulationRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true; // Izinkan semua user yang sudah login
     }
 
     /**
@@ -22,7 +22,8 @@ class UpdateRegulationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'title' => 'required|string|max:255|unique:regulations,title,' . $this->regulation->id,
+            'description' => 'required|string|max:10000',
         ];
     }
 }

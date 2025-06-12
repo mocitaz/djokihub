@@ -247,7 +247,7 @@ class ProjectController extends Controller
          $validatedData = $request->validate([
             'project_name' => 'required|string|max:255',
             'client_name' => 'required|string|max:255', 
-            'order_id' => [ // Changed from order_id_modal
+            'order_id' => [
                 'nullable',
                 'string',
                 'max:255',
@@ -263,15 +263,15 @@ class ProjectController extends Controller
             'assignees.*' => 'exists:users,id',
             'file_poc_upload' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,zip,rar|max:10240',
             'file_poc_link' => 'nullable|string|max:1000|url:http,https',
-            'remove_file_poc' => 'nullable|boolean', // Or 'sometimes|accepted' if it's a checkbox that sends '1'
+            'remove_file_poc' => 'nullable|boolean',
             'file_bast_upload' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,zip,rar|max:10240',
             'file_bast_link' => 'nullable|string|max:1000|url:http,https',
             'remove_file_bast' => 'nullable|boolean',
             'notes' => 'nullable|string|max:65535',
             'requirements' => 'required|array|min:1',
-            'requirements.*.id' => 'nullable|integer|exists:project_requirements,id', // ID of existing requirement
+            'requirements.*.id' => 'nullable|integer|exists:project_requirements,id',
             'requirements.*.description' => 'required|string|max:500',
-            // 'requirements.*.is_completed_temp' is handled in logic, not direct validation here
+            'requirements.*.is_completed_temp' => 'nullable|string|in:on',
         ]);
 
         $parsedBudget = $this->parseBudget($request->input('budget'));
@@ -342,42 +342,37 @@ class ProjectController extends Controller
 
             if ($request->has('requirements') && is_array($request->requirements)) {
                 foreach ($request->requirements as $index => $reqData) {
-                    // Skip if description is empty, effectively deleting it if it existed
                     if (empty($reqData['description'])) {
-                        // If an ID was provided for this empty description, it will be caught by array_diff later for deletion
-                        if (!empty($reqData['id'])) {
-                            // No need to add to $submittedRequirementIds if description is empty
-                        }
                         continue; 
                     }
 
                     $isCompleted = isset($reqData['is_completed_temp']) && $reqData['is_completed_temp'] === 'on';
                     Log::info("Processing requirement update/create:", ['data' => $reqData, 'is_completed_parsed' => $isCompleted]);
 
-                    if (!empty($reqData['id'])) { // Existing requirement
+                    if (!empty($reqData['id'])) {
                         $requirement = ProjectRequirement::find($reqData['id']);
-                        if ($requirement && $requirement->project_id == $project->id) { // Ensure it belongs to this project
+                        if ($requirement && $requirement->project_id == $project->id) {
                             $requirement->update([
                                 'description' => $reqData['description'],
                                 'is_completed' => $isCompleted,
                                 'order' => $index + 1,
                             ]);
-                            $submittedRequirementIds[] = $requirement->id; // Track updated ID
+                            $submittedRequirementIds[] = $requirement->id;
                         }
-                    } else { // New requirement
+                    } else {
                         $newReq = $project->requirements()->create([
                             'description' => $reqData['description'],
                             'is_completed' => $isCompleted,
                             'order' => $index + 1,
                         ]);
-                        $submittedRequirementIds[] = $newReq->id; // Track new ID
+                        $submittedRequirementIds[] = $newReq->id;
                     }
                 }
             }
             
             // Delete requirements that were removed from the form
             $idsToDelete = array_diff($existingRequirementIds, $submittedRequirementIds);
-            if(!empty($idsToDelete)) {
+            if (!empty($idsToDelete)) {
                 Log::info("Deleting project requirements with IDs:", $idsToDelete);
                 ProjectRequirement::destroy($idsToDelete);
             }
