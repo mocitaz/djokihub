@@ -1,5 +1,5 @@
 # app.yaml
-runtime: php80
+runtime: php82 # UBAH INI: php83 -> php82 (gunakan versi yang didukung)
 env: flex
 
 runtime_config:
@@ -10,44 +10,36 @@ handlers:
   script: auto
 
 env_variables:
-  # === Variabel Laravel Utama ===
   APP_NAME: Laravel
   APP_ENV: production
   APP_KEY: base64:kud1DoXb402k2vtxMZyNxUID5CIjBsdsqwiXZVTpAwY=
   APP_DEBUG: false
-  APP_URL: https://djokicoding.asia-southeast2.r.appspot.com # URL akan menggunakan Project ID Anda
+  APP_URL: https://djokicoding.asia-southeast2.r.appspot.com
 
   APP_LOCALE: en
   APP_FALLBACK_LOCALE: en
   APP_FAKER_LOCALE: en_US
 
-  # === Konfigurasi Koneksi ke Cloud SQL Database Anda ===
-  # FORMAT DB_HOST: /cloudsql/PROJECT_ID:REGION:INSTANCE_NAME
   DB_CONNECTION: mysql
-  DB_HOST: /cloudsql/djokicoding:asia-southeast2:djokicoding-db-mysql # PROJECT ID sudah diganti ke djokicoding!
+  DB_HOST: /cloudsql/djokicoding:asia-southeast2:djokicoding-db-mysql
   DB_PORT: 3306
   DB_DATABASE: djokidb
   DB_USERNAME: root
   DB_PASSWORD: root1234
 
-  # === Cache & Session ===
   SESSION_DRIVER: database
   CACHE_DRIVER: database
 
-  # === Filesystem (Penting jika ada upload file) ===
   FILESYSTEM_DISK: local
 
-  # === Queue Connection (Jika menggunakan Queue) ===
   QUEUE_CONNECTION: database
 
-  # === Mailer (Jika Anda mengirim email) ===
   MAIL_MAILER: log
-  MAIL_FROM_ADDRESS: "noreply@djokicoding.com" # Ganti dengan email pengirim yang valid
+  MAIL_FROM_ADDRESS: "noreply@djokicoding.com"
   MAIL_FROM_NAME: "${APP_NAME}"
 
-# Bagian ini HARUS SAMA dengan bagian setelah "/cloudsql/" di DB_HOST
 beta_settings:
-  cloud_sql_instances: djokicoding:asia-southeast2:djokicoding-db-mysql # PROJECT ID sudah diganti ke djokicoding!
+  cloud_sql_instances: djokicoding:asia-southeast2:djokicoding-db-mysql
 
 automatic_scaling:
   min_num_instances: 1
